@@ -14,7 +14,6 @@ import android.os.IBinder
 import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
-import android.view.accessibility.AccessibilityManager
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.nekomimi.assistant.MainActivity
@@ -101,13 +100,7 @@ class WatchdogService : Service() {
 
     private fun isAccessibilityEnabled(): Boolean {
         return try {
-            val am = getSystemService(ACCESSIBILITY_SERVICE) as AccessibilityManager
-            val list = am.getEnabledAccessibilityServiceList(android.accessibilityservice.AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-            val myName = NekoAccessibilityService::class.java.name
-            list.any { info ->
-                val si = info.resolveInfo.serviceInfo
-                si.packageName == packageName && (si.name == myName || si.name.endsWith("NekoAccessibilityService"))
-            }
+            AccessibilityUtil.isEnabled(this)
         } catch (t: Throwable) {
             LogStore.e(TAG, "无障碍状态查询失败", t)
             false

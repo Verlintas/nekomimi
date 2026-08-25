@@ -294,9 +294,6 @@ class NekoAccessibilityService : AccessibilityService() {
         } catch (_: Throwable) {
         }
         for (w in windows) {
-            if (w == null) {
-                continue
-            }
             val type = try {
                 w.type
             } catch (_: Throwable) {
