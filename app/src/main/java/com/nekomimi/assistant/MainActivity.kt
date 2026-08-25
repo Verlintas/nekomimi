@@ -21,6 +21,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -56,15 +57,20 @@ private fun App() {
     val appState = remember { AppState(context.applicationContext) }
     var tab by remember { mutableIntStateOf(0) }
 
-    // Android 13+ 通知权限（看门狗掉线提醒依赖通知）
+    // Android 13+ 通知权限（看门狗掉线提醒依赖通知）。
+    // 必须在 LaunchedEffect 中请求：rememberLauncherForActivityResult 的注册
+    // 发生在首次组合完成之后，组合期间直接 launch() 会抛
+    // "Launcher has not been initialized"（首帧闪退）。
     val notifPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { }
     val needsNotifPermission = Build.VERSION.SDK_INT >= 33 &&
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
         PackageManager.PERMISSION_GRANTED
-    if (needsNotifPermission) {
-        notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    LaunchedEffect(Unit) {
+        if (needsNotifPermission) {
+            notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     Scaffold(
