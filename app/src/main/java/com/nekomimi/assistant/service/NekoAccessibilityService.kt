@@ -84,7 +84,10 @@ class NekoAccessibilityService : AccessibilityService() {
             )
             // 启动看门狗前台服务：保活 + 掉线检测 + 电池白名单引导
             WatchdogService.start(this)
-            LogStore.i(TAG, "无障碍服务已连接")
+            LogStore.i(
+                TAG,
+                "无障碍服务已连接：模式=${cfg.processingMode} 防抖=${cfg.stableDelayMs}ms 仅聚焦=${cfg.onlyProcessFocused} 追加=${cfg.enableAppend}/${cfg.appendText} 颜文字=${cfg.enableRandomEmoticon} 目标应用=${cfg.targetPackages.size} 排除=${cfg.excludePackages.size}",
+            )
         } catch (t: Throwable) {
             LogStore.e(TAG, "onServiceConnected 异常", t)
         }
@@ -184,9 +187,12 @@ class NekoAccessibilityService : AccessibilityService() {
             // 流式输入防抖（定时器版）：每次文本变化重置计时器，输入停止 stableDelayMs 后处理；
             // 句末为标点视为句子结束，立即处理（无需等防抖）。
             mainHandler.removeCallbacks(debounceRunnable)
-            val text = after?.toString()?.trim() ?: ""
+            val text = if (afterEmpty) readNodeText() else after.toString().trim()
+            if (text.isEmpty()) {
+                return
+            }
             if (cfg.stableDelayMs <= 0 || isPunctuationEnding(text)) {
-                val src = event.source
+                val src = if (afterEmpty) null else event.source
                 try {
                     doProcess(src, false)
                 } finally {
@@ -196,10 +202,13 @@ class NekoAccessibilityService : AccessibilityService() {
                 mainHandler.postDelayed(debounceRunnable, cfg.stableDelayMs.toLong())
             }
         } else {
-            // 标点触发模式：句末为标点才处理
-            val text = after?.toString()?.trim() ?: return
+            // 标点触发模式：句末为标点才处理（事件无文本时从聚焦输入框节点读取）
+            val text = if (afterEmpty) readNodeText() else after.toString().trim()
+            if (text.isEmpty()) {
+                return
+            }
             if (isPunctuationEnding(text)) {
-                val src = event.source
+                val src = if (afterEmpty) null else event.source
                 try {
                     doProcess(src, false)
                 } finally {
@@ -210,6 +219,18 @@ class NekoAccessibilityService : AccessibilityService() {
     }
 
     // ==================== 核心处理 ====================
+
+    /** 事件无文本时，从聚焦输入框节点读取当前文本（部分应用的事件不带文本） */
+    private fun readNodeText(): String {
+        val node = resolveInputNode() ?: return ""
+        return try {
+            node.text?.toString()?.trim() ?: ""
+        } catch (_: Throwable) {
+            ""
+        } finally {
+            node.recycle()
+        }
+    }
 
     private fun doProcess(eventSource: AccessibilityNodeInfo?, isSendClick: Boolean) {
         if (processing) {
@@ -296,15 +317,24 @@ class NekoAccessibilityService : AccessibilityService() {
                 clearCachedInput() // 节点已失效
             }
         }
+        val scanStart = System.currentTimeMillis()
         val found = findEditableInAppWindows()
+        val cost = System.currentTimeMillis() - scanStart
         if (found != null) {
+            if (cost > 50) {
+                LogStore.i(TAG, "输入框扫描命中，耗时 ${cost}ms")
+            }
             return found
+        }
+        if (cost > 50) {
+            LogStore.i(TAG, "输入框扫描未命中，耗时 ${cost}ms")
         }
         return null
     }
 
     /** 在非输入法、非覆盖层的应用窗口中查找可编辑输入框（带节点/深度预算） */
     private fun findEditableInAppWindows(): AccessibilityNodeInfo? {
+        val scanStart = System.currentTimeMillis()
         val budget = intArrayOf(MAX_NODES)
         var windows = emptyList<AccessibilityWindowInfo>()
         try {
@@ -334,6 +364,22 @@ class NekoAccessibilityService : AccessibilityService() {
                 val wpkg = root.packageName?.toString() ?: ""
                 if (wpkg.isEmpty() || wpkg == packageName || !cfg.shouldHandlePackage(wpkg)) {
                     continue
+                }
+                // 优先 findFocus(FOCUS_INPUT)：零遍历直接拿到聚焦输入框。
+                // 微信/QQ 聊天页节点树动辄数千节点，全树遍历预算可能耗尽扫不到底部的输入框。
+                val focused = try {
+                    root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+                } catch (_: Throwable) {
+                    null
+                }
+                if (focused != null) {
+                    if (isEditableNode(focused) && isUsableForInput(focused, cfg)) {
+                        val result = AccessibilityNodeInfo.obtain(focused)
+                        cacheInput(focused, wpkg)
+                        focused.recycle()
+                        return result
+                    }
+                    focused.recycle()
                 }
                 val found = findEditable(root, cfg.onlyProcessFocused, 0, budget)
                 if (found != null && isUsableForInput(found, cfg)) {
@@ -373,13 +419,13 @@ class NekoAccessibilityService : AccessibilityService() {
                 root.recycle()
             }
         }
-        logScanMiss()
+        logScanMiss(System.currentTimeMillis() - scanStart)
         return null
     }
 
     /** 检索失败诊断日志（10 秒节流），便于排查"某应用不生效"的原因 */
     private var lastScanLogTime = 0L
-    private fun logScanMiss() {
+    private fun logScanMiss(costMs: Long) {
         val now = System.currentTimeMillis()
         if (now - lastScanLogTime < 10_000) {
             return
@@ -387,7 +433,7 @@ class NekoAccessibilityService : AccessibilityService() {
         lastScanLogTime = now
         LogStore.w(
             TAG,
-            "未找到输入框（仅处理聚焦=${cfg.onlyProcessFocused}，目标=${cfg.targetPackages.size} 个包名，排除=${cfg.excludePackages.size} 个）——若目标应用持续不生效，请关闭设置里的「仅处理聚焦的输入框」试试",
+            "未找到输入框（耗时 ${costMs}ms；仅处理聚焦=${cfg.onlyProcessFocused}，目标=${cfg.targetPackages.size} 个包名）——若目标应用持续不生效，请关闭设置里的「仅处理聚焦的输入框」试试",
         )
     }
 
@@ -582,11 +628,25 @@ class NekoAccessibilityService : AccessibilityService() {
                 a.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_START_INT, text.length)
                 a.putInt(AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_END_INT, text.length)
                 n.performAction(AccessibilityNodeInfo.ACTION_SET_SELECTION, a)
+            } else {
+                logWriteFail()
             }
             ok
         } catch (_: Throwable) {
+            logWriteFail()
             false
         }
+    }
+
+    /** 写回失败日志（10 秒节流）——部分应用（如个别版本微信）不支持 ACTION_SET_TEXT 时是静默失败 */
+    private var lastWriteFailTime = 0L
+    private fun logWriteFail() {
+        val now = System.currentTimeMillis()
+        if (now - lastWriteFailTime < 10_000) {
+            return
+        }
+        lastWriteFailTime = now
+        LogStore.w(TAG, "ACTION_SET_TEXT 写回失败（应用可能不支持该无障碍操作，无法改写）")
     }
 
     /** 通用发送按钮识别：可点击、非输入框、类名像按钮、文本/描述含发送关键词 */
@@ -617,8 +677,8 @@ class NekoAccessibilityService : AccessibilityService() {
         private const val ECHO_WINDOW_MS = 600L
         private const val EMPTY_WINDOW_MS = 3000L
         private const val PLACEHOLDER_MEMORY_MS = 10000L
-        private const val MAX_NODES = 3000
-        private const val MAX_DEPTH = 50
+        private const val MAX_NODES = 20000
+        private const val MAX_DEPTH = 60
 
         private val SEND_KEYWORDS = arrayOf(
             "发送", "送出", "提交", "发表", "发布", "回复", "评论",
