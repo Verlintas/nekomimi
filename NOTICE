@@ -1,0 +1,11 @@
+猫猫助手 (Nekomimi)
+
+本项目的设计与实现参考了以下开源项目，特此声明：
+
+- [Leon-kennedy-god/cat-apk](https://github.com/Leon-kennedy-god/cat-apk)（喵喵助手，AGPL-3.0）
+  - 使用其应用图标资源（mipmap 系列）
+- [QiCaiJie114514/QQMiaoAssistant](https://github.com/QiCaiJie114514/QQMiaoAssistant)（上游）
+
+本项目为从零重写的二次开发，核心代码（规则引擎、无障碍服务、UI）均为独立实现。
+
+本仓库在收到上游权利人异议后将配合下架或整改。

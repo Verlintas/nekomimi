@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">猫猫助手</string>
+    <string name="accessibility_label">猫猫助手（聊天文本改写）</string>
+    <string name="accessibility_description">猫猫助手无障碍服务：在聊天软件输入框中自动应用文本替换规则、断句追加与随机颜文字。支持白名单/黑名单作用范围，自动跳过输入法、密码框与系统界面。</string>
+</resources>
