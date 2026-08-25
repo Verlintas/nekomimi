@@ -116,6 +116,12 @@ class TextProcessorTest {
     }
 
     @Test
+    fun `append applies to single sentence without punctuation`() {
+        val c = cfg(enableAppend = true, appendText = "喵~")
+        assertEquals("试试喵~", TextProcessor.process("试试", c)!!)
+    }
+
+    @Test
     fun `append disabled leaves text alone`() {
         val c = cfg(enableAppend = false, appendText = "喵")
         assertEquals("你好吗？", TextProcessor.process("你好吗？", c))

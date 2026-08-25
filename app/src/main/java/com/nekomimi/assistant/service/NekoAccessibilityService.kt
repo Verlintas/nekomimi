@@ -163,7 +163,12 @@ class NekoAccessibilityService : AccessibilityService() {
             return
         }
         try {
-            if (cfg.enableSendFallback && isSendButton(src)) {
+            // 发送兜底仅对实时模式有意义（打字时不加颜文字，发送时补上）；
+            // 标点模式每次触发已处理完毕，兜底只会造成"发送后又填充"。
+            if (cfg.enableSendFallback
+                && cfg.processingMode == Config.MODE_REALTIME
+                && isSendButton(src)
+            ) {
                 sendResetUntil = now
                 sendResetPkg = pkg
                 doProcess(src, true)
@@ -263,6 +268,23 @@ class NekoAccessibilityService : AccessibilityService() {
             }
             // 写入回显跳过：我们自己写入后紧随的回显事件
             if (lastWriteTime > 0 && now - lastWriteTime < ECHO_WINDOW_MS && raw == lastSet) {
+                return
+            }
+            // 发送兜底：文本已是我们写入的最终形式，不再重复写。
+            // 微信等应用点发送时输入框可能尚未清空，重复写入会造成"发送后又填充一段"。
+            if (isSendClick && raw == lastSet) {
+                return
+            }
+            // 删除抑制：用户删掉了我们追加的装饰（"喵~"/颜文字）时，尊重删除、不补写，
+            // 只重置跟踪状态（继续输入会正常恢复处理）。
+            // 否则用户删掉装饰后防抖会立刻补回，形成"删了又补"的死循环。
+            if (lastSet.isNotEmpty() && raw.length < lastSet.length
+                && TextProcessor.stripDecorations(raw, cfg)
+                == TextProcessor.stripDecorations(lastSet, cfg)
+            ) {
+                userOriginal = TextProcessor.stripDecorations(raw, cfg)
+                lastSet = ""
+                LogStore.i(TAG, "检测到删除装饰，跳过写回: $raw")
                 return
             }
             // 增量跟踪用户原始输入
