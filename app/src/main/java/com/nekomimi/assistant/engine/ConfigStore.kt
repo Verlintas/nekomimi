@@ -17,6 +17,16 @@ object ConfigStore {
     private const val KEY_ENABLE_SEND_FALLBACK = "enable_send_fallback"
     private const val KEY_ONLY_FOCUSED = "only_focused"
     private const val KEY_STABLE_DELAY = "stable_delay_ms"
+    private const val KEY_PAUSED = "paused"
+
+    /** 全局暂停（通知栏快捷开关），暂停期间不处理任何输入 */
+    fun isPaused(ctx: Context): Boolean =
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(KEY_PAUSED, false)
+
+    fun setPaused(ctx: Context, paused: Boolean) {
+        ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putBoolean(KEY_PAUSED, paused).apply()
+    }
 
     fun load(ctx: Context): Config {
         val sp = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  猫猫助手无障碍服务配置。
+  不限定包名：监听所有应用，作用范围由应用内白名单/黑名单配置动态决定。
+  notificationTimeout 100ms：略微降低事件频率，配合服务内防抖，避免高负载 ANR。
+-->
+<accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:accessibilityEventTypes="typeWindowStateChanged|typeViewTextChanged|typeViewClicked"
+    android:accessibilityFeedbackType="feedbackGeneric"
+    android:notificationTimeout="100"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagDefault"
+    android:canRetrieveWindowContent="true"
+    android:description="@string/accessibility_description"/>

@@ -27,6 +27,38 @@
             </intent-filter>
         </activity>
 
+        <!--
+            猫猫助手无障碍服务：
+            - 不限定包名，作用范围由白名单/黑名单配置动态决定
+            - 通用“可编辑节点”检索，适配任意聊天软件
+            - 轻量化事件处理（事件节点复用 + 节点缓存 + 遍历预算）
+        -->
+        <service
+            android:name=".service.NekoAccessibilityService"
+            android:exported="true"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:label="@string/accessibility_label">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!--
+            看门狗前台服务：无障碍服务连接时启动，保活 + 周期掉线检测 + 电池白名单引导。
+            specialUse 前台服务类型（Android 14+ 要求声明 PROPERTY_SPECIAL_USE_FGS_SUBTYPE）。
+        -->
+        <service
+            android:name=".service.WatchdogService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="keep the accessibility text-rewriting service alive and watch for disconnection" />
+        </service>
+
     </application>
 
 </manifest>
