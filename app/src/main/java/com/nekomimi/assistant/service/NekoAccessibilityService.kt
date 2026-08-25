@@ -373,7 +373,22 @@ class NekoAccessibilityService : AccessibilityService() {
                 root.recycle()
             }
         }
+        logScanMiss()
         return null
+    }
+
+    /** 检索失败诊断日志（10 秒节流），便于排查"某应用不生效"的原因 */
+    private var lastScanLogTime = 0L
+    private fun logScanMiss() {
+        val now = System.currentTimeMillis()
+        if (now - lastScanLogTime < 10_000) {
+            return
+        }
+        lastScanLogTime = now
+        LogStore.w(
+            TAG,
+            "未找到输入框（仅处理聚焦=${cfg.onlyProcessFocused}，目标=${cfg.targetPackages.size} 个包名，排除=${cfg.excludePackages.size} 个）——若目标应用持续不生效，请关闭设置里的「仅处理聚焦的输入框」试试",
+        )
     }
 
     /** 深度优先查找可编辑节点：isEditable 优先，类名兜底；跳过密码框；受节点数/深度预算约束 */
@@ -454,7 +469,9 @@ class NekoAccessibilityService : AccessibilityService() {
                 true
             } else {
                 val cls = n.className?.toString() ?: ""
-                cls.contains("EditText") || cls.contains("TextInput") || cls.contains("TextField")
+                // 放宽到包含 Edit/TextInput/TextField/Editor：覆盖微信 MMEditText、
+                // QQ AIOEditText 等自定义输入控件（isEditable 未上报时靠类名兜底）
+                cls.contains("Edit") || cls.contains("TextInput") || cls.contains("TextField")
             }
         } catch (_: Throwable) {
             false
@@ -490,16 +507,22 @@ class NekoAccessibilityService : AccessibilityService() {
         lastPlaceholderTime = now
     }
 
-    /** 综合判定：时序信号（刚清空/刚发送 3s 内）+ 记忆匹配（10s）+ 模式库 */
+    /**
+     * 综合判定：记忆匹配（10s 内拦截过的同文本）或模式库命中。
+     * 时序信号（刚清空/刚发送 3s 内）不再单独拦截——否则微信/QQ 等正常聊天
+     * 发送后 3 秒内打新消息会被全部误拦（用户实测"微信没反应"的主因）。
+     * 时序信号仅作为置信度增强：配合模式库命中才拦截。
+     */
     private fun isPlaceholderLike(text: String, pkg: String, now: Long, allowTiming: Boolean): Boolean {
-        if (allowTiming) {
+        val patternHit = isPlaceholderPattern(text)
+        if (allowTiming && patternHit) {
             val recentEmpty = pkg == lastEmptyPkg && now - lastEmptyObservedTime < EMPTY_WINDOW_MS
             val recentSend = pkg == sendResetPkg && now < sendResetUntil + EMPTY_WINDOW_MS
             if (recentEmpty || recentSend) {
                 return true
             }
         }
-        return isPlaceholderMemory(text, pkg, now) || isPlaceholderPattern(text)
+        return isPlaceholderMemory(text, pkg, now) || patternHit
     }
 
     private fun isPlaceholderMemory(text: String, pkg: String, now: Long): Boolean {
