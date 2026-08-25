@@ -15,8 +15,18 @@ object ConfigStore {
     private const val PREFS = "nekomimi_config"
     private const val KEY_ACTIVE_PROFILE = "active_profile"
     private const val KEY_PROFILE_PREFIX = "profile:"
+    private const val KEY_CONFIG_EPOCH = "config_epoch"
     const val DEFAULT_PROFILE = "default"
     const val MAX_PROFILE_NAME = 16
+
+    /** 配置版本号：任何保存/切换/删除都会递增，服务据此重置增量跟踪状态 */
+    fun configEpoch(ctx: Context): Long =
+        prefs(ctx).getLong(KEY_CONFIG_EPOCH, 0L)
+
+    private fun bumpEpoch(ctx: Context) {
+        val sp = prefs(ctx)
+        sp.edit().putLong(KEY_CONFIG_EPOCH, sp.getLong(KEY_CONFIG_EPOCH, 0L) + 1L).apply()
+    }
 
     // ============ 旧版字段（v0.1.x 迁移用） ============
     private const val KEY_RULES = "rules"
@@ -38,6 +48,7 @@ object ConfigStore {
 
     fun save(ctx: Context, config: Config) {
         saveProfile(ctx, activeProfileName(ctx), config)
+        bumpEpoch(ctx)
     }
 
     /** 全局暂停（通知栏快捷开关），暂停期间不处理任何输入 */
@@ -56,6 +67,7 @@ object ConfigStore {
     fun setActiveProfile(ctx: Context, name: String) {
         val target = if (name in profiles(ctx)) name else DEFAULT_PROFILE
         prefs(ctx).edit().putString(KEY_ACTIVE_PROFILE, target).apply()
+        bumpEpoch(ctx)
     }
 
     /** 全部配置名（default 始终存在） */
@@ -85,6 +97,8 @@ object ConfigStore {
         prefs(ctx).edit().remove(KEY_PROFILE_PREFIX + name).apply()
         if (activeProfileName(ctx) == name) {
             setActiveProfile(ctx, DEFAULT_PROFILE)
+        } else {
+            bumpEpoch(ctx)
         }
     }
 

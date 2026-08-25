@@ -41,8 +41,9 @@ import com.nekomimi.assistant.ui.AppState
 fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var refreshTick by remember { mutableStateOf(0) }
-    val enabled = remember(refreshTick) { AccessibilityUtil.isEnabled(context) }
-    val batteryOk = remember(refreshTick) { BatteryGuard.isIgnoringBatteryOptimizations(context) }
+    // 依赖 version：从系统设置开启/关闭无障碍后回到应用，状态立即刷新
+    val enabled = remember(refreshTick, appState.version) { AccessibilityUtil.isEnabled(context) }
+    val batteryOk = remember(refreshTick, appState.version) { BatteryGuard.isIgnoringBatteryOptimizations(context) }
 
     Column(
         modifier = modifier

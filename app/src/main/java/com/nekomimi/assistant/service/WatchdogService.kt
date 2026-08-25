@@ -151,13 +151,13 @@ class WatchdogService : Service() {
     )
 
     private fun a11ySettingsIntent(): PendingIntent = PendingIntent.getActivity(
-        this, 2,
+        this, 3,
         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
     private fun batterySettingsIntent(): PendingIntent = PendingIntent.getActivity(
-        this, 3,
+        this, 4,
         Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
@@ -173,7 +173,7 @@ class WatchdogService : Service() {
             "无障碍服务已掉线 · 点击查看"
         }
         return NotificationCompat.Builder(this, CHANNEL_STATUS)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(title)
             .setContentText(text)
             .setOngoing(true)
@@ -185,7 +185,7 @@ class WatchdogService : Service() {
 
     private fun buildAlertNotification(): android.app.Notification =
         NotificationCompat.Builder(this, CHANNEL_ALERT)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("猫猫助手：无障碍服务已掉线")
             .setContentText("文本改写已失效，点击前往系统设置一键恢复")
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -195,7 +195,7 @@ class WatchdogService : Service() {
 
     private fun buildBatteryNotification(): android.app.Notification =
         NotificationCompat.Builder(this, CHANNEL_ALERT)
-            .setSmallIcon(R.mipmap.ic_launcher)
+            .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("猫猫助手：建议允许后台运行")
             .setContentText("当前未加入电池优化白名单，服务可能被系统杀掉。点击前往设置")
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)

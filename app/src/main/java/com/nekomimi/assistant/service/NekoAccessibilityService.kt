@@ -44,6 +44,7 @@ class NekoAccessibilityService : AccessibilityService() {
     private var lastPlaceholderPkg = ""
     private var lastPlaceholderTime = 0L
     private var lastConfigReloadTime = 0L
+    private var lastConfigEpoch = 0L
 
     /** 上次定位到的输入框节点缓存（包名 + 过期时间），节点访问异常自动失效重扫 */
     private var cachedInput: AccessibilityNodeInfo? = null
@@ -127,7 +128,13 @@ class NekoAccessibilityService : AccessibilityService() {
 
     private fun handleEvent(event: AccessibilityEvent) {
         val pkg = event.packageName?.toString() ?: ""
-        if (pkg.isEmpty() || pkg == packageName || ConfigStore.isPaused(this)) {
+        if (pkg.isEmpty() || pkg == packageName) {
+            return
+        }
+        if (ConfigStore.isPaused(this)) {
+            // 暂停时取消挂起的防抖，避免暂停后仍改写一次
+            processing = false
+            mainHandler.removeCallbacks(debounceRunnable)
             return
         }
         val now = System.currentTimeMillis()
@@ -135,6 +142,12 @@ class NekoAccessibilityService : AccessibilityService() {
         if (lastConfigReloadTime == 0L || now - lastConfigReloadTime > 5000L) {
             cfg = ConfigStore.load(this)
             lastConfigReloadTime = now
+            // 配置版本号变化（保存/切换 Profile）时重置增量跟踪，避免旧跟踪状态污染新配置
+            val epoch = ConfigStore.configEpoch(this)
+            if (epoch != lastConfigEpoch) {
+                lastConfigEpoch = epoch
+                resetTracking()
+            }
         }
         if (!cfg.shouldHandlePackage(pkg)) {
             return
@@ -146,15 +159,21 @@ class NekoAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun onWindowChanged(now: Long) {
+    /** 重置增量跟踪与节点缓存（窗口切换/配置切换/暂停时调用） */
+    private fun resetTracking() {
         processing = false
         mainHandler.removeCallbacks(debounceRunnable)
         userOriginal = ""
         lastSet = ""
         lastWriteTime = 0L
+        clearCachedInput()
+    }
+
+    private fun onWindowChanged(now: Long) {
+        resetTracking()
         cfg = ConfigStore.load(this)
         lastConfigReloadTime = now
-        clearCachedInput()
+        lastConfigEpoch = ConfigStore.configEpoch(this)
     }
 
     private fun onViewClicked(event: AccessibilityEvent, pkg: String, now: Long) {
@@ -171,7 +190,7 @@ class NekoAccessibilityService : AccessibilityService() {
             ) {
                 sendResetUntil = now
                 sendResetPkg = pkg
-                doProcess(src, true)
+                doProcess(src, true, pkg)
             }
         } finally {
             src.recycle()
@@ -188,46 +207,48 @@ class NekoAccessibilityService : AccessibilityService() {
             rememberPlaceholder(after.toString(), pkg, now)
             return
         }
+        val text = if (afterEmpty) readNodeText() else after.toString().trim()
+        if (text.isEmpty()) {
+            return
+        }
         if (cfg.processingMode == Config.MODE_REALTIME) {
             // 流式输入防抖（定时器版）：每次文本变化重置计时器，输入停止 stableDelayMs 后处理；
-            // 句末为标点视为句子结束，立即处理（无需等防抖）。
+            // 事件带文本且句末为标点 → 立即处理（句子已结束）；
+            // afterEmpty（IME 组合中）绝不立即处理，避免写入打断输入法组合。
             mainHandler.removeCallbacks(debounceRunnable)
-            val text = if (afterEmpty) readNodeText() else after.toString().trim()
-            if (text.isEmpty()) {
-                return
-            }
-            if (cfg.stableDelayMs <= 0 || isPunctuationEnding(text)) {
-                val src = if (afterEmpty) null else event.source
-                try {
-                    doProcess(src, false)
-                } finally {
-                    src?.recycle()
-                }
+            if (cfg.stableDelayMs <= 0 || (!afterEmpty && isPunctuationEnding(text))) {
+                processWithSource(event, afterEmpty)
             } else {
                 mainHandler.postDelayed(debounceRunnable, cfg.stableDelayMs.toLong())
             }
         } else {
-            // 标点触发模式：句末为标点才处理（事件无文本时从聚焦输入框节点读取）
-            val text = if (afterEmpty) readNodeText() else after.toString().trim()
-            if (text.isEmpty()) {
-                return
+            // 标点触发模式：句末为标点才处理。
+            // 事件无文本时走延迟处理（避免打断 IME 组合）。
+            if (afterEmpty) {
+                mainHandler.removeCallbacks(debounceRunnable)
+                mainHandler.postDelayed(debounceRunnable, SAFE_DELAY_MS)
+            } else if (isPunctuationEnding(text)) {
+                processWithSource(event, false)
             }
-            if (isPunctuationEnding(text)) {
-                val src = if (afterEmpty) null else event.source
-                try {
-                    doProcess(src, false)
-                } finally {
-                    src?.recycle()
-                }
-            }
+        }
+    }
+
+    private fun processWithSource(event: AccessibilityEvent, nullSource: Boolean) {
+        val src = if (nullSource) null else event.source
+        try {
+            doProcess(src, false, event.packageName?.toString() ?: "")
+        } finally {
+            src?.recycle()
         }
     }
 
     // ==================== 核心处理 ====================
 
-    /** 事件无文本时，从聚焦输入框节点读取当前文本（部分应用的事件不带文本） */
+    /** 事件无文本时，从聚焦输入框节点读取当前文本（部分应用的事件不带文本）。
+     *  仅走缓存 + findFocus 快速路径，绝不触发全树扫描——空文本事件在 IME 组合期间
+     *  频繁出现，全树扫描会导致 ANR。 */
     private fun readNodeText(): String {
-        val node = resolveInputNode() ?: return ""
+        val node = resolveInputNodeFast() ?: return ""
         return try {
             node.text?.toString()?.trim() ?: ""
         } catch (_: Throwable) {
@@ -237,7 +258,48 @@ class NekoAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun doProcess(eventSource: AccessibilityNodeInfo?, isSendClick: Boolean) {
+    /** 零遍历输入框定位：缓存命中优先，否则活动窗口 findFocus(FOCUS_INPUT) */
+    private fun resolveInputNodeFast(): AccessibilityNodeInfo? {
+        val now = System.currentTimeMillis()
+        val cached = cachedInput
+        if (cached != null && cachedInputPkg.isNotEmpty() && now - cachedInputTime < CACHE_TTL_MS) {
+            try {
+                if (isUsableForInput(cached, cfg)) {
+                    return AccessibilityNodeInfo.obtain(cached)
+                }
+            } catch (_: Throwable) {
+                clearCachedInput()
+            }
+        }
+        val root = try {
+            rootInActiveWindow
+        } catch (_: Throwable) {
+            null
+        } ?: return null
+        try {
+            val wpkg = root.packageName?.toString() ?: ""
+            if (wpkg.isEmpty() || wpkg == packageName || !cfg.shouldHandlePackage(wpkg)) {
+                return null
+            }
+            val focused = try {
+                root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
+            } catch (_: Throwable) {
+                null
+            } ?: return null
+            if (isEditableNode(focused) && isUsableForInput(focused, cfg)) {
+                val result = AccessibilityNodeInfo.obtain(focused)
+                cacheInput(focused, wpkg)
+                focused.recycle()
+                return result
+            }
+            focused.recycle()
+            return null
+        } finally {
+            root.recycle()
+        }
+    }
+
+    private fun doProcess(eventSource: AccessibilityNodeInfo?, isSendClick: Boolean, expectedPkg: String = "") {
         if (processing) {
             return
         }
@@ -249,21 +311,22 @@ class NekoAccessibilityService : AccessibilityService() {
             if (eventSource != null && isUsableForInput(eventSource, cfg)) {
                 inp = AccessibilityNodeInfo.obtain(eventSource)
             }
-            // 2) 缓存节点
+            // 2) 缓存节点（带包名校验，防止误用其他应用的缓存）
             if (inp == null) {
-                inp = resolveInputNode()
+                inp = resolveInputNode(expectedPkg)
             }
             if (inp == null) {
                 return
             }
             val raw = inp.text?.toString()?.trim() ?: ""
+            val inputPkg = expectedPkg.ifEmpty { currentInputPkg() }
             if (raw.isEmpty()) {
-                noteEmpty(currentInputPkg(), now)
+                noteEmpty(inputPkg, now)
                 return
             }
-            if (isPlaceholderText(inp, raw) || placeholderHit(raw, currentInputPkg(), now)) {
+            if (isPlaceholderText(inp, raw) || placeholderHit(raw, inputPkg, now)) {
                 LogStore.i(TAG, "处理级拦截疑似提示词: $raw")
-                rememberPlaceholder(raw, currentInputPkg(), now)
+                rememberPlaceholder(raw, inputPkg, now)
                 return
             }
             // 写入回显跳过：我们自己写入后紧随的回显事件
@@ -327,10 +390,13 @@ class NekoAccessibilityService : AccessibilityService() {
      * 定位输入框：缓存命中（同包名 + TTL 内 + 节点仍可用）则零扫描返回；
      * 否则在应用窗口内做带预算的深度优先检索。
      */
-    private fun resolveInputNode(): AccessibilityNodeInfo? {
+    private fun resolveInputNode(expectedPkg: String = ""): AccessibilityNodeInfo? {
         val now = System.currentTimeMillis()
         val cached = cachedInput
-        if (cached != null && cachedInputPkg.isNotEmpty() && now - cachedInputTime < CACHE_TTL_MS) {
+        if (cached != null && cachedInputPkg.isNotEmpty()
+            && (expectedPkg.isEmpty() || cachedInputPkg == expectedPkg)
+            && now - cachedInputTime < CACHE_TTL_MS
+        ) {
             try {
                 if (isUsableForInput(cached, cfg)) {
                     return AccessibilityNodeInfo.obtain(cached)
@@ -701,6 +767,8 @@ class NekoAccessibilityService : AccessibilityService() {
         private const val PLACEHOLDER_MEMORY_MS = 10000L
         private const val MAX_NODES = 20000
         private const val MAX_DEPTH = 60
+        /** 事件无文本时的延迟处理间隔（避免打断 IME 组合） */
+        private const val SAFE_DELAY_MS = 300L
 
         private val SEND_KEYWORDS = arrayOf(
             "发送", "送出", "提交", "发表", "发布", "回复", "评论",

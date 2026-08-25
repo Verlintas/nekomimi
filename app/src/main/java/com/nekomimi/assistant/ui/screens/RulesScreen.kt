@@ -33,7 +33,8 @@ import com.nekomimi.assistant.ui.AppState
 
 @Composable
 fun RulesScreen(appState: AppState, modifier: Modifier = Modifier) {
-    var rulesText by remember { mutableStateOf(Config.rulesToText(appState.config.rules)) }
+    // keyed by config：切换 Profile 后规则编辑框立即跟随新配置
+    var rulesText by remember(appState.config) { mutableStateOf(Config.rulesToText(appState.config.rules)) }
     var sample by remember { mutableStateOf("今天我很好，你准备好了吗？") }
     var saved by remember { mutableStateOf(false) }
 

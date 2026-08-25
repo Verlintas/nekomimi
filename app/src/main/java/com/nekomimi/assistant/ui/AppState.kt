@@ -2,6 +2,7 @@ package com.nekomimi.assistant.ui
 
 import android.content.Context
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.nekomimi.assistant.engine.Config
@@ -16,6 +17,10 @@ class AppState(private val context: Context) {
         private set
 
     var activeProfile by mutableStateOf(ConfigStore.activeProfileName(context))
+        private set
+
+    /** 版本号：reload/切换后递增，UI 用它强制重组刷新（如服务状态） */
+    var version by mutableIntStateOf(0)
         private set
 
     val profiles: List<String>
@@ -39,6 +44,7 @@ class AppState(private val context: Context) {
         ConfigStore.setActiveProfile(context, name)
         activeProfile = name
         config = ConfigStore.load(context)
+        version++
     }
 
     /** 新建配置（复制当前），返回是否成功 */
@@ -52,11 +58,14 @@ class AppState(private val context: Context) {
         ConfigStore.deleteProfile(context, name)
         activeProfile = ConfigStore.activeProfileName(context)
         config = ConfigStore.load(context)
+        version++
     }
 
-    fun reload() {
+    /** 从系统侧刷新（如无障碍开关状态变化后回到应用） */
+    fun refresh() {
         config = ConfigStore.load(context)
         paused = ConfigStore.isPaused(context)
         activeProfile = ConfigStore.activeProfileName(context)
+        version++
     }
 }

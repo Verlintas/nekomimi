@@ -15,6 +15,7 @@ import java.util.Locale
 object LogStore {
     private const val MAX_ENTRIES = 500
     private const val LOG_FILE = "neko_log.txt"
+    private const val MAX_FILE_BYTES = 1_000_000L
 
     private val buffer = ArrayDeque<String>()
     private var file: File? = null
@@ -70,6 +71,10 @@ object LogStore {
         val f = file ?: return
         try {
             f.parentFile?.mkdirs()
+            // 日志轮转：超过 1MB 直接重建，防止文件无限增长
+            if (f.length() > MAX_FILE_BYTES) {
+                f.delete()
+            }
             FileOutputStream(f, true).use { fos ->
                 PrintWriter(fos.writer(Charsets.UTF_8), true).use { pw ->
                     pw.println(line)

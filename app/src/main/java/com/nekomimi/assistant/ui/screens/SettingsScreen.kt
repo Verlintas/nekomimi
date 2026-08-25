@@ -53,16 +53,17 @@ private val CHAT_PRESETS = listOf(
 @Composable
 fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
     val cfg = appState.config
-    var modeRealtime by remember { mutableStateOf(cfg.processingMode == Config.MODE_REALTIME) }
-    var enableAppend by remember { mutableStateOf(cfg.enableAppend) }
-    var appendText by remember { mutableStateOf(cfg.appendText) }
-    var enableEmoticon by remember { mutableStateOf(cfg.enableRandomEmoticon) }
-    var customEmoticons by remember { mutableStateOf(cfg.customEmoticons.joinToString("\n")) }
-    var enableSendFallback by remember { mutableStateOf(cfg.enableSendFallback) }
-    var onlyFocused by remember { mutableStateOf(cfg.onlyProcessFocused) }
-    var stableDelay by remember { mutableStateOf(cfg.stableDelayMs.toString()) }
-    var targets by remember { mutableStateOf(cfg.targetPackages.joinToString("\n")) }
-    var excludes by remember { mutableStateOf(cfg.excludePackages.joinToString("\n")) }
+    // keyed by config：切换 Profile 后界面立即跟随新配置（否则保存会用旧值覆盖新 Profile）
+    var modeRealtime by remember(cfg) { mutableStateOf(cfg.processingMode == Config.MODE_REALTIME) }
+    var enableAppend by remember(cfg) { mutableStateOf(cfg.enableAppend) }
+    var appendText by remember(cfg) { mutableStateOf(cfg.appendText) }
+    var enableEmoticon by remember(cfg) { mutableStateOf(cfg.enableRandomEmoticon) }
+    var customEmoticons by remember(cfg) { mutableStateOf(cfg.customEmoticons.joinToString("\n")) }
+    var enableSendFallback by remember(cfg) { mutableStateOf(cfg.enableSendFallback) }
+    var onlyFocused by remember(cfg) { mutableStateOf(cfg.onlyProcessFocused) }
+    var stableDelay by remember(cfg) { mutableStateOf(cfg.stableDelayMs.toString()) }
+    var targets by remember(cfg) { mutableStateOf(cfg.targetPackages.joinToString("\n")) }
+    var excludes by remember(cfg) { mutableStateOf(cfg.excludePackages.joinToString("\n")) }
     var saved by remember { mutableStateOf(false) }
     var showNewProfileDialog by remember { mutableStateOf(false) }
 

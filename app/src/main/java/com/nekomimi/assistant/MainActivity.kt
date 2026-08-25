@@ -21,6 +21,7 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,7 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import com.nekomimi.assistant.log.LogStore
 import com.nekomimi.assistant.service.NekoAccessibilityService
 import com.nekomimi.assistant.ui.AppState
@@ -56,6 +60,18 @@ private fun App() {
     val context = LocalContext.current
     val appState = remember { AppState(context.applicationContext) }
     var tab by remember { mutableIntStateOf(0) }
+
+    // 从系统设置返回时刷新状态（无障碍开关/暂停可能已变化）
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    DisposableEffect(lifecycle) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                appState.refresh()
+            }
+        }
+        lifecycle.addObserver(observer)
+        onDispose { lifecycle.removeObserver(observer) }
+    }
 
     // Android 13+ 通知权限（看门狗掉线提醒依赖通知）。
     // 必须在 LaunchedEffect 中请求：rememberLauncherForActivityResult 的注册
