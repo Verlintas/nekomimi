@@ -33,7 +33,7 @@ object TextProcessor {
             }
         }
         if (config.enableAppend) {
-            text = appendPerSentence(text, config.appendText)
+            text = appendPerSentence(text, appendCandidates(config.appendText))
         }
         if (config.enableRandomEmoticon) {
             val em = pick(config.activeEmoticons)
@@ -132,10 +132,16 @@ object TextProcessor {
         return sb.toString()
     }
 
-    private fun appendPerSentence(text: String, suffix: String): String {
-        if (suffix.isEmpty()) {
-            return text
+    /** 追加文本解析：含 | 时按随机候选处理（喵|喵呜|喵喵），否则按字面 */
+    private fun appendCandidates(appendText: String): List<String> {
+        if ('|' !in appendText) {
+            return listOf(appendText)
         }
+        return appendText.split("|").map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    private fun appendPerSentence(text: String, candidates: List<String>): String {
+        val suffix = candidates.firstOrNull { it.isNotEmpty() } ?: return text
         val parts = mutableListOf<String>()
         val seps = mutableListOf<String>()
         var lastEnd = 0
@@ -156,7 +162,8 @@ object TextProcessor {
         for (i in parts.indices) {
             val part = parts[i].trim()
             if (part.isNotEmpty()) {
-                sb.append(part).append(suffix)
+                // 多候选时每句随机选一个
+                sb.append(part).append(pick(candidates) ?: suffix)
             }
             if (i < seps.size) {
                 sb.append(seps[i])
@@ -178,10 +185,11 @@ object TextProcessor {
             }
             result = result.replace(Regex(" *" + Regex.escape(em)), "")
         }
-        val append = config.appendText
-        if (append.isNotEmpty() && config.enableAppend) {
-            // 追加文本的特征：紧跟句子内容之后，且后面紧跟标点/空白/结尾
-            val pattern = Regex(Regex.escape(append) + "(?=[，,。！!？?\\s]|$)")
+        val appendCands = appendCandidates(config.appendText)
+        if (appendCands.isNotEmpty() && config.enableAppend) {
+            // 追加文本的特征：紧跟句子内容之后，且后面紧跟标点/空白/结尾；
+            // 多候选（喵|喵呜）时逐个剥离
+            val pattern = Regex("(?:" + appendCands.joinToString("|") { Regex.escape(it) } + ")(?=[，,。！!？?\\s]|$)")
             result = pattern.replace(result, "")
         }
         return result.trim()

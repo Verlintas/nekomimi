@@ -185,6 +185,9 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
                 onValueChange = { appendText = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("追加内容（默认：喵）") },
+                supportingText = {
+                    Text("支持随机：用 | 分隔多个候选（如 喵|喵呜|喵喵，每句随机选一个）")
+                },
                 enabled = enableAppend,
             )
         }
