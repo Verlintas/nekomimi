@@ -4,6 +4,8 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
@@ -32,7 +34,6 @@ class NekoAccessibilityService : AccessibilityService() {
     private var lastSet = ""
     private var processing = false
     private var lastWriteTime = 0L
-    private var lastTextChangeTime = 0L
 
     /** 提示词防护状态 */
     private var lastEmptyObservedTime = 0L
@@ -48,6 +49,18 @@ class NekoAccessibilityService : AccessibilityService() {
     private var cachedInput: AccessibilityNodeInfo? = null
     private var cachedInputPkg = ""
     private var cachedInputTime = 0L
+
+    /** 实时模式防抖定时器：输入停止 stableDelayMs 后自动处理（节点已失效，走缓存/扫描路径） */
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val debounceRunnable = object : Runnable {
+        override fun run() {
+            try {
+                doProcess(null, false)
+            } catch (t: Throwable) {
+                LogStore.e(TAG, "防抖处理异常", t)
+            }
+        }
+    }
 
     override fun onServiceConnected() {
         super.onServiceConnected()
@@ -87,10 +100,12 @@ class NekoAccessibilityService : AccessibilityService() {
 
     override fun onInterrupt() {
         processing = false
+        mainHandler.removeCallbacks(debounceRunnable)
     }
 
     override fun onUnbind(intent: android.content.Intent?): Boolean {
         instance = null
+        mainHandler.removeCallbacks(debounceRunnable)
         clearCachedInput()
         WatchdogService.stop(this)
         LogStore.i(TAG, "服务已断开 (onUnbind)")
@@ -99,6 +114,7 @@ class NekoAccessibilityService : AccessibilityService() {
 
     override fun onDestroy() {
         instance = null
+        mainHandler.removeCallbacks(debounceRunnable)
         clearCachedInput()
         LogStore.i(TAG, "服务销毁 (onDestroy)")
         super.onDestroy()
@@ -129,10 +145,10 @@ class NekoAccessibilityService : AccessibilityService() {
 
     private fun onWindowChanged(now: Long) {
         processing = false
+        mainHandler.removeCallbacks(debounceRunnable)
         userOriginal = ""
         lastSet = ""
         lastWriteTime = 0L
-        lastTextChangeTime = now
         cfg = ConfigStore.load(this)
         lastConfigReloadTime = now
         clearCachedInput()
@@ -165,17 +181,19 @@ class NekoAccessibilityService : AccessibilityService() {
             return
         }
         if (cfg.processingMode == Config.MODE_REALTIME) {
-            // 流式输入防抖：连续变化间隔小于稳定阈值视为未成型
-            val gap = now - lastTextChangeTime
-            lastTextChangeTime = now
-            if (cfg.stableDelayMs > 0 && gap < cfg.stableDelayMs) {
-                return
-            }
-            val src = event.source
-            try {
-                doProcess(src, false)
-            } finally {
-                src?.recycle()
+            // 流式输入防抖（定时器版）：每次文本变化重置计时器，输入停止 stableDelayMs 后处理；
+            // 句末为标点视为句子结束，立即处理（无需等防抖）。
+            mainHandler.removeCallbacks(debounceRunnable)
+            val text = after?.toString()?.trim() ?: ""
+            if (cfg.stableDelayMs <= 0 || isPunctuationEnding(text)) {
+                val src = event.source
+                try {
+                    doProcess(src, false)
+                } finally {
+                    src?.recycle()
+                }
+            } else {
+                mainHandler.postDelayed(debounceRunnable, cfg.stableDelayMs.toLong())
             }
         } else {
             // 标点触发模式：句末为标点才处理
