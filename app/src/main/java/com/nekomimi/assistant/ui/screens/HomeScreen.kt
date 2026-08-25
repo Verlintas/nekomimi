@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -96,6 +97,31 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
                         Text("刷新")
                     }
                 }
+            }
+        }
+
+        // ===== 配置方案快速切换 =====
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "配置方案：${appState.activeProfile}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for (name in appState.profiles) {
+                        FilterChip(
+                            selected = name == appState.activeProfile,
+                            onClick = { appState.switchProfile(name) },
+                            label = { Text(name) },
+                        )
+                    }
+                }
+                Text(
+                    "切换立即生效；通知栏常驻通知也可一键轮换。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
 

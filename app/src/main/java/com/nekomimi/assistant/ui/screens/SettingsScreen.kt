@@ -11,14 +11,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +32,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.nekomimi.assistant.engine.Config
+import com.nekomimi.assistant.engine.ConfigStore
+import com.nekomimi.assistant.engine.Presets
 import com.nekomimi.assistant.ui.AppState
 
 /** 常用聊天软件预置包名 */
@@ -59,6 +64,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
     var targets by remember { mutableStateOf(cfg.targetPackages.joinToString("\n")) }
     var excludes by remember { mutableStateOf(cfg.excludePackages.joinToString("\n")) }
     var saved by remember { mutableStateOf(false) }
+    var showNewProfileDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = modifier
@@ -68,6 +74,82 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("设置", style = MaterialTheme.typography.headlineMedium)
+
+        // ===== 多套配置 Profile =====
+        SectionCard("配置方案（Profile）") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                for (name in appState.profiles) {
+                    FilterChip(
+                        selected = name == appState.activeProfile,
+                        onClick = { appState.switchProfile(name) },
+                        label = { Text(name) },
+                    )
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = { showNewProfileDialog = true }) {
+                    Text("新建配置")
+                }
+                if (appState.activeProfile != ConfigStore.DEFAULT_PROFILE) {
+                    OutlinedButton(onClick = {
+                        appState.deleteProfile(appState.activeProfile)
+                        saved = true
+                    }) {
+                        Text("删除当前")
+                    }
+                }
+            }
+            Text(
+                "当前：「${appState.activeProfile}」。切换后立即生效；通知栏常驻通知可一键轮换配置。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (showNewProfileDialog) {
+            NewProfileDialog(
+                onConfirm = { name ->
+                    if (appState.createProfile(name)) {
+                        saved = true
+                    }
+                    showNewProfileDialog = false
+                },
+                onDismiss = { showNewProfileDialog = false },
+            )
+        }
+
+        // ===== 预设风格包 =====
+        SectionCard("预设风格包（一键应用规则）") {
+            for (pack in Presets.PACKS) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(pack.name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium)
+                        Text(
+                            pack.description + "（" + Presets.validRuleCount(pack.rulesText) + " 条规则）",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Spacer(Modifier.width(8.dp))
+                    TextButton(onClick = { applyPreset(appState, pack, replace = true) }) {
+                        Text("覆盖")
+                    }
+                    TextButton(onClick = { applyPreset(appState, pack, replace = false) }) {
+                        Text("追加")
+                    }
+                }
+            }
+            Text(
+                "「覆盖」替换现有规则；「追加」合并到现有规则末尾。应用后可在「规则」页查看修改。",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
 
         // ===== 处理模式 =====
         SectionCard("处理模式") {
@@ -262,3 +344,46 @@ private fun SwitchRow(title: String, desc: String, checked: Boolean, onChecked: 
 
 private fun splitLines(s: String): List<String> =
     s.lines().map { it.trim() }.filter { it.isNotEmpty() }
+
+/** 应用预设：覆盖或追加到当前配置的规则 */
+private fun applyPreset(appState: AppState, pack: Presets.StylePack, replace: Boolean) {
+    val rules = if (replace) {
+        Presets.asReplaceRules(pack.rulesText)
+    } else {
+        Presets.asAppendRules(appState.config.rules, pack.rulesText)
+    }
+    appState.save(appState.config.copy(rules = rules))
+}
+
+@Composable
+private fun NewProfileDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("新建配置方案") },
+        text = {
+            Column {
+                Text(
+                    "将复制当前配置为新的方案，之后可在任意处一键切换。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { if (it.length <= ConfigStore.MAX_PROFILE_NAME) name = it },
+                    label = { Text("方案名称（≤${ConfigStore.MAX_PROFILE_NAME} 字）") },
+                    singleLine = true,
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = { onConfirm(name) }, enabled = name.isNotBlank()) {
+                Text("创建")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
+}

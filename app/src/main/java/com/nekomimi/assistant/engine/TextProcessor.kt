@@ -41,7 +41,8 @@ object TextProcessor {
                 text = "$text $em"
             }
         }
-        return text
+        // 动态占位符展开：{time} {date} {week} {random} 等（规则/追加文本里都可用）
+        return PlaceholderExpander.expand(text)
     }
 
     /** 校验规则是否可用（UI 诊断用），返回错误描述；null = 可用 */

@@ -48,10 +48,19 @@ class WatchdogService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == ACTION_TOGGLE_PAUSE) {
-            val paused = ConfigStore.isPaused(this)
-            ConfigStore.setPaused(this, !paused)
-            LogStore.i(TAG, "暂停开关 -> ${!paused}")
+        when (intent?.action) {
+            ACTION_TOGGLE_PAUSE -> {
+                val paused = ConfigStore.isPaused(this)
+                ConfigStore.setPaused(this, !paused)
+                LogStore.i(TAG, "暂停开关 -> ${!paused}")
+            }
+            ACTION_NEXT_PROFILE -> {
+                val current = ConfigStore.activeProfileName(this)
+                val profiles = ConfigStore.profiles(this)
+                val next = profiles[(profiles.indexOf(current) + 1).mod(profiles.size)]
+                ConfigStore.setActiveProfile(this, next)
+                LogStore.i(TAG, "配置轮换 -> $next")
+            }
         }
         startForegroundInternal()
         handler.removeCallbacks(checkTask)
@@ -135,6 +144,12 @@ class WatchdogService : Service() {
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
     )
 
+    private fun nextProfileIntent(): PendingIntent = PendingIntent.getService(
+        this, 2,
+        Intent(this, WatchdogService::class.java).setAction(ACTION_NEXT_PROFILE),
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+    )
+
     private fun a11ySettingsIntent(): PendingIntent = PendingIntent.getActivity(
         this, 2,
         Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -150,8 +165,13 @@ class WatchdogService : Service() {
     private fun buildStatusNotification(): android.app.Notification {
         val paused = ConfigStore.isPaused(this)
         val enabled = isAccessibilityEnabled()
+        val profile = ConfigStore.activeProfileName(this)
         val title = if (paused) "猫猫助手（已暂停）" else "猫猫助手运行中"
-        val text = if (enabled) "无障碍服务正常 · 点击管理" else "无障碍服务已掉线 · 点击查看"
+        val text = if (enabled) {
+            "配置：$profile · 点击管理"
+        } else {
+            "无障碍服务已掉线 · 点击查看"
+        }
         return NotificationCompat.Builder(this, CHANNEL_STATUS)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(title)
@@ -159,6 +179,7 @@ class WatchdogService : Service() {
             .setOngoing(true)
             .setContentIntent(appIntent())
             .addAction(0, if (paused) "恢复" else "暂停", togglePauseIntent())
+            .addAction(0, "下一个配置", nextProfileIntent())
             .build()
     }
 
@@ -185,6 +206,7 @@ class WatchdogService : Service() {
     companion object {
         private const val TAG = "Watchdog"
         const val ACTION_TOGGLE_PAUSE = "com.nekomimi.assistant.action.TOGGLE_PAUSE"
+        const val ACTION_NEXT_PROFILE = "com.nekomimi.assistant.action.NEXT_PROFILE"
         private const val NOTIF_FGS_ID = 1
         private const val NOTIF_ALERT_ID = 2
         private const val NOTIF_BATTERY_ID = 3

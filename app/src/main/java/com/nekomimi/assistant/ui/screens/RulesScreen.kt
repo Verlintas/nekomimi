@@ -64,6 +64,7 @@ fun RulesScreen(appState: AppState, modifier: Modifier = Modifier) {
                     "· 字面替换：原词=替换词（也支持全角 ＝ / →）\n" +
                         "· 正则替换：re:正则=替换词（支持 \$1 捕获组）\n" +
                         "· 随机替换：原词=选项1|选项2|选项3\n" +
+                        "· 动态占位符：{time} {date} {week} {random} {random:1-6}\n" +
                         "· 注释：# 开头或空行\n" +
                         "· 按顺序应用，每行一条",
                     style = MaterialTheme.typography.bodySmall,
