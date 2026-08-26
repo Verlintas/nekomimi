@@ -206,7 +206,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
                 onValueChange = { customEmoticons = it },
                 modifier = Modifier.fillMaxWidth(),
                 minLines = 3,
-                label = { Text("自定义颜文字（每行一个，留空 = 内置 50+ 个）") },
+                label = { Text("自定义颜文字（每行一个，留空 = 内置 ${Config.BUILTIN_EMOTICONS.size} 个）") },
                 enabled = enableEmoticon,
             )
         }
