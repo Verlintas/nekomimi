@@ -45,6 +45,8 @@ class WatchdogService : Service() {
     override fun onCreate() {
         super.onCreate()
         createChannels()
+        // 注册自愈闹钟：即使本服务/进程被杀，闹钟也会唤醒进程重建
+        AutoHealReceiver.schedule(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -88,16 +90,27 @@ class WatchdogService : Service() {
         }
     }
 
+    private var consecutiveDisabled = 0
+
     private fun check() {
         val enabled = isAccessibilityEnabled()
         val alive = NekoAccessibilityService.isRunning()
         LogStore.i(TAG, "健康检查: 系统已启用=$enabled 服务实例存活=$alive")
         val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         if (enabled) {
+            consecutiveDisabled = 0
             nm.cancel(NOTIF_ALERT_ID)
         } else {
+            consecutiveDisabled++
+            if (consecutiveDisabled >= GRACE_CHECKS) {
+                // 用户主动关闭了无障碍服务：优雅停机，不再反复刷掉线通知。
+                // 用户重新开启后，服务重连会自动重新拉起本服务。
+                LogStore.i(TAG, "无障碍已关闭（连续 ${GRACE_CHECKS} 次检查），看门狗停止")
+                stopSelf()
+                return
+            }
             nm.notify(NOTIF_ALERT_ID, buildAlertNotification())
-            LogStore.w(TAG, "检测到无障碍服务掉线，已发送恢复通知")
+            LogStore.w(TAG, "检测到无障碍服务未启用，已发送恢复通知")
         }
         if (!BatteryGuard.isIgnoringBatteryOptimizations(this)) {
             nm.notify(NOTIF_BATTERY_ID, buildBatteryNotification())
@@ -211,6 +224,8 @@ class WatchdogService : Service() {
         private const val NOTIF_ALERT_ID = 2
         private const val NOTIF_BATTERY_ID = 3
         private const val CHECK_INTERVAL_MS = 60_000L
+        /** 连续 N 次检查（N 分钟）确认关闭后才停服 */
+        private const val GRACE_CHECKS = 2
         private const val CHANNEL_STATUS = "status"
         private const val CHANNEL_ALERT = "alert"
 

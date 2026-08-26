@@ -2,6 +2,7 @@ package com.nekomimi.assistant.engine
 
 import android.content.Context
 import android.content.SharedPreferences
+import com.nekomimi.assistant.log.LogStore
 
 /**
  * Config 的 SharedPreferences 持久化（服务与 UI 共用）。
@@ -12,6 +13,7 @@ import android.content.SharedPreferences
  *  - 旧版（v0.1.x 单配置字段）数据首次读取时自动迁移为 default profile。
  */
 object ConfigStore {
+    private const val TAG = "ConfigStore"
     private const val PREFS = "nekomimi_config"
     private const val KEY_ACTIVE_PROFILE = "active_profile"
     private const val KEY_PROFILE_PREFIX = "profile:"
@@ -106,7 +108,19 @@ object ConfigStore {
         val sp = prefs(ctx)
         val json = sp.getString(KEY_PROFILE_PREFIX + name, null)
         if (json != null) {
-            return ConfigJson.decode(json)
+            val decoded = ConfigJson.decode(json)
+            if (decoded != null) {
+                return decoded
+            }
+            // 主配置损坏 → 尝试文件备份恢复（冗余设计：配置永不丢失）
+            val backup = readBackup(ctx)
+            if (backup != null) {
+                LogStore.w(TAG, "配置 [$name] 解析失败，已从备份恢复")
+                saveProfile(ctx, name, backup)
+                return backup
+            }
+            LogStore.w(TAG, "配置 [$name] 解析失败且无备份，使用默认配置")
+            return Config()
         }
         if (name == DEFAULT_PROFILE) {
             // 旧版数据迁移：首次加载 default 且旧字段存在时
@@ -122,6 +136,36 @@ object ConfigStore {
 
     fun saveProfile(ctx: Context, name: String, config: Config) {
         prefs(ctx).edit().putString(KEY_PROFILE_PREFIX + name, ConfigJson.encode(config)).apply()
+        // 冗余：同步写文件备份（配置损坏时恢复用）
+        writeBackup(ctx, config)
+    }
+
+    // ============ 文件备份（配置冗余） ============
+
+    private const val BACKUP_FILE = "config_backup.json"
+
+    private fun backupFile(ctx: Context): java.io.File =
+        java.io.File(ctx.filesDir, BACKUP_FILE)
+
+    private fun writeBackup(ctx: Context, config: Config) {
+        try {
+            backupFile(ctx).writeText(ConfigJson.encode(config))
+        } catch (_: Exception) {
+            // 备份失败不阻断主流程
+        }
+    }
+
+    private fun readBackup(ctx: Context): Config? {
+        return try {
+            val f = backupFile(ctx)
+            if (!f.exists()) {
+                null
+            } else {
+                ConfigJson.decode(f.readText())
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     // ============ 旧版迁移 ============

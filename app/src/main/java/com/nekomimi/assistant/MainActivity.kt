@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.nekomimi.assistant.log.CrashHandler
 import com.nekomimi.assistant.log.LogStore
 import com.nekomimi.assistant.service.NekoAccessibilityService
 import com.nekomimi.assistant.ui.AppState
@@ -46,6 +47,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         LogStore.init(this)
+        CrashHandler.install(this)
         enableEdgeToEdge()
         setContent {
             NekomimiTheme {

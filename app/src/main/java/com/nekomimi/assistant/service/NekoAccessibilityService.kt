@@ -11,8 +11,9 @@ import android.view.accessibility.AccessibilityNodeInfo
 import android.view.accessibility.AccessibilityWindowInfo
 import com.nekomimi.assistant.engine.Config
 import com.nekomimi.assistant.engine.ConfigStore
-import com.nekomimi.assistant.engine.RuleMode
+import com.nekomimi.assistant.engine.CircuitBreaker
 import com.nekomimi.assistant.engine.TextProcessor
+import com.nekomimi.assistant.log.CrashHandler
 import com.nekomimi.assistant.log.LogStore
 import java.util.Locale
 
@@ -63,11 +64,15 @@ class NekoAccessibilityService : AccessibilityService() {
         }
     }
 
+    /** 熔断器：包异常风暴 / 写入风暴的自动修复防线 */
+    private val circuitBreaker = CircuitBreaker()
+
     override fun onServiceConnected() {
         super.onServiceConnected()
         instance = this
         try {
             LogStore.init(this)
+            CrashHandler.install(this)
             cfg = ConfigStore.load(this)
             setServiceInfo(
                 AccessibilityServiceInfo().apply {
@@ -303,7 +308,12 @@ class NekoAccessibilityService : AccessibilityService() {
         if (processing) {
             return
         }
+        // 熔断检查：包异常风暴/写入风暴期间跳过处理（自动修复，日志可查）
+        if (circuitBreaker.isPackageBlocked(expectedPkg) || circuitBreaker.isWriteStormActive()) {
+            return
+        }
         processing = true
+        val startMs = System.currentTimeMillis()
         var inp: AccessibilityNodeInfo? = null
         try {
             val now = System.currentTimeMillis()
@@ -369,15 +379,26 @@ class NekoAccessibilityService : AccessibilityService() {
                 if (setText(inp, target)) {
                     lastSet = target
                     lastWriteTime = now
+                    circuitBreaker.recordWriteSuccess()
+                    circuitBreaker.resetPackage(expectedPkg)
+                } else {
+                    circuitBreaker.recordPackageFailure(expectedPkg)
                 }
             } else {
                 lastSet = target
+                circuitBreaker.resetPackage(expectedPkg)
             }
         } catch (t: Throwable) {
+            circuitBreaker.recordPackageFailure(expectedPkg)
             LogStore.e(TAG, "doProcess 异常", t)
         } finally {
             inp?.recycle()
             processing = false
+            // 耗时监控：单次处理超过 200ms 记录（诊断 ANR 风险）
+            val cost = System.currentTimeMillis() - startMs
+            if (cost > 200) {
+                LogStore.i(TAG, "doProcess 耗时 ${cost}ms")
+            }
         }
     }
 

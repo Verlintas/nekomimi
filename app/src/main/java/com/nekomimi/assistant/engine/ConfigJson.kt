@@ -12,9 +12,10 @@ object ConfigJson {
     fun encode(config: Config): String =
         json.encodeToString(Config.serializer(), config)
 
-    fun decode(text: String): Config = try {
+    /** 解码失败返回 null（调用方可回退到备份配置） */
+    fun decode(text: String): Config? = try {
         json.decodeFromString(Config.serializer(), text)
     } catch (_: Exception) {
-        Config()
+        null
     }
 }

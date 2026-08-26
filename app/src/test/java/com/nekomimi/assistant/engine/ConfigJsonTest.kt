@@ -2,7 +2,6 @@ package com.nekomimi.assistant.engine
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ConfigJsonTest {
@@ -26,7 +25,7 @@ class ConfigJsonTest {
             onlyProcessFocused = false,
             stableDelayMs = 500,
         )
-        val decoded = ConfigJson.decode(ConfigJson.encode(cfg))
+        val decoded = ConfigJson.decode(ConfigJson.encode(cfg))!!
         assertEquals(cfg.rules, decoded.rules)
         assertEquals(cfg.enableAppend, decoded.enableAppend)
         assertEquals(cfg.appendText, decoded.appendText)
@@ -43,20 +42,18 @@ class ConfigJsonTest {
     @Test
     fun `empty config roundtrip`() {
         val cfg = Config()
-        assertEquals(cfg.rules, ConfigJson.decode(ConfigJson.encode(cfg)).rules)
+        assertEquals(cfg.rules, ConfigJson.decode(ConfigJson.encode(cfg))!!.rules)
     }
 
     @Test
-    fun `decode garbage returns default config`() {
-        val cfg = ConfigJson.decode("not json{{{")
-        assertEquals(Config().rules, cfg.rules)
-        assertTrue(cfg.targetPackages.isEmpty())
+    fun `decode garbage returns null`() {
+        assertEquals(null, ConfigJson.decode("not json{{{"))
     }
 
     @Test
     fun `decode unknown keys is tolerant`() {
         val cfg = ConfigJson.decode("""{"rules":[],"unknown_future_field":123}""")
-        assertEquals(emptyList<Rule>(), cfg.rules)
+        assertEquals(emptyList<Rule>(), cfg?.rules)
     }
 
     @Test
