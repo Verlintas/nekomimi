@@ -1,7 +1,6 @@
 package com.nekomimi.assistant.ui.theme
 
 import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
@@ -68,7 +67,8 @@ private val DarkColors = darkColorScheme(
 
 @Composable
 fun NekomimiTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    // 固定浅色模式：不跟随系统深色主题，保证界面始终是白粉配色
+    darkTheme: Boolean = false,
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {

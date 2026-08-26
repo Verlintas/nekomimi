@@ -1,6 +1,5 @@
 package com.nekomimi.assistant.ui.screens
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -87,7 +86,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
         Text("设置", style = MaterialTheme.typography.headlineMedium)
 
         // ===== 多套配置 Profile（蓝色卡片背景） =====
-        SectionCard("配置方案（Profile）", containerColor = if (isSystemInDarkTheme()) NekoCardColors.BlueCardDark else NekoCardColors.BlueCardLight) {
+        SectionCard("配置方案（Profile）", containerColor = NekoCardColors.BlueCardLight) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

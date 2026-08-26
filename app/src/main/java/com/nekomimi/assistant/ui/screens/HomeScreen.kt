@@ -1,6 +1,5 @@
 package com.nekomimi.assistant.ui.screens
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -108,7 +107,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(
-                containerColor = if (isSystemInDarkTheme()) NekoCardColors.BlueCardDark else NekoCardColors.BlueCardLight,
+                containerColor = NekoCardColors.BlueCardLight,
             ),
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
