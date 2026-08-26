@@ -92,7 +92,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
         Text("设置", style = MaterialTheme.typography.headlineMedium)
 
         // ===== 多套配置 Profile（蓝色卡片背景） =====
-        SectionCard("配置方案（Profile）", containerColor = NekoCardColors.BlueCardLight) {
+        SectionCard("配置方案（Profile）", containerColor = NekoCardColors.BlueCard) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -376,7 +376,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
 @Composable
 private fun SectionCard(
     title: String,
-    containerColor: Color = NekoCardColors.BlueCardLight,
+    containerColor: Color = NekoCardColors.PinkCard,
     content: @Composable () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = containerColor)) {

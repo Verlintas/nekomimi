@@ -76,7 +76,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         // ===== 服务状态 =====
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
+            colors = CardDefaults.cardColors(containerColor = NekoCardColors.PinkCard),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -115,9 +115,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         // ===== 配置方案快速切换（蓝色卡片背景） =====
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = NekoCardColors.BlueCardLight,
-            ),
+            colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCard),
         ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
@@ -150,7 +148,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         // ===== 暂停开关 =====
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
+            colors = CardDefaults.cardColors(containerColor = NekoCardColors.PinkCard),
         ) {
             Row(
                 modifier = Modifier
@@ -180,7 +178,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         if (!batteryOk) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
+                colors = CardDefaults.cardColors(containerColor = NekoCardColors.PinkCard),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -215,7 +213,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         ) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
+                colors = CardDefaults.cardColors(containerColor = NekoCardColors.PinkCard),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(

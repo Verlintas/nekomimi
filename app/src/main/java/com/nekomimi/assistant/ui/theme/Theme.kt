@@ -18,11 +18,12 @@ import androidx.compose.ui.platform.LocalContext
 
 // 白粉淡蓝配色规则：
 //  - 按键只允许白色或粉色（primary/onPrimary/secondaryContainer 均为粉系，蓝色绝不落在控件上）
-//  - 蓝色仅作为卡片背景使用（显式指定，见 NekoCardColors.BlueCard）
-//  - 白色可用于文字、按钮、应用背景
+//  - 蓝色仅作为卡片背景使用（配置方案专属卡，见 NekoCardColors.BlueCard）
+//  - 粉色为主要卡片背景色，白色可用于文字、按钮、应用背景
 object NekoCardColors {
-    val BlueCardLight = Color(0xFFD6E9FF) // 淡蓝卡片背景（浅色模式）
-    val BlueCardDark = Color(0xFF355279)   // 淡蓝卡片背景（深色模式）
+    val PinkCard = Color(0xFFFFD9E8)     // 淡粉卡片背景（主）
+    val BlueCard = Color(0xFFD6E9FF)     // 淡蓝卡片背景（配置方案专属）
+    val BlueCardDark = Color(0xFF355279) // 淡蓝卡片背景（深色模式，预留）
 }
 
 private val LightColors = lightColorScheme(
