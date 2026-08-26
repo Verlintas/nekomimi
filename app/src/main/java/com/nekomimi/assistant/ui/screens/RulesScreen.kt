@@ -27,12 +27,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.nekomimi.assistant.engine.Config
 import com.nekomimi.assistant.engine.TextProcessor
 import com.nekomimi.assistant.ui.AppState
 
 @Composable
 fun RulesScreen(appState: AppState, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     // keyed by config：切换 Profile 后规则编辑框立即跟随新配置
     var rulesText by remember(appState.config) { mutableStateOf(Config.rulesToText(appState.config.rules)) }
     var sample by remember { mutableStateOf("今天我很好，你准备好了吗？") }
@@ -125,7 +128,11 @@ fun RulesScreen(appState: AppState, modifier: Modifier = Modifier) {
             }
             Spacer(Modifier.width(12.dp))
             Button(
-                onClick = { rulesText = ""; saved = false },
+                onClick = {
+                    rulesText = ""
+                    saved = false
+                    Toast.makeText(context, "已清空（保存后生效）", Toast.LENGTH_SHORT).show()
+                },
                 modifier = Modifier.weight(1f),
                 colors = ButtonDefaultsOutlined(),
             ) {

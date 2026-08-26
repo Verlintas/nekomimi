@@ -13,8 +13,8 @@ android {
         applicationId = "com.nekomimi.assistant"
         minSdk = 26
         targetSdk = 36
-        versionCode = 11
-        versionName = "0.2.5"
+        versionCode = 13
+        versionName = "0.2.7"
     }
 
     signingConfigs {

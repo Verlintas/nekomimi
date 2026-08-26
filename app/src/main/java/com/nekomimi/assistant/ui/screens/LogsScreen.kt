@@ -3,6 +3,7 @@ package com.nekomimi.assistant.ui.screens
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -56,12 +57,17 @@ fun LogsScreen(appState: AppState, modifier: Modifier = Modifier) {
                 onClick = {
                     val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                     clip.setPrimaryClip(ClipData.newPlainText("neko_log", entries.joinToString("\n")))
+                    Toast.makeText(context, "已复制 ${entries.size} 条日志", Toast.LENGTH_SHORT).show()
                 },
             ) {
                 Text("复制")
             }
             Spacer(Modifier.width(8.dp))
-            Button(onClick = { LogStore.clear(); refreshTick++ }) {
+            Button(onClick = {
+                LogStore.clear()
+                refreshTick++
+                Toast.makeText(context, "日志已清空", Toast.LENGTH_SHORT).show()
+            }) {
                 Text("清空")
             }
         }

@@ -30,6 +30,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -113,7 +114,12 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
                     for (name in appState.profiles) {
                         FilterChip(
                             selected = name == appState.activeProfile,
-                            onClick = { appState.switchProfile(name) },
+                            onClick = {
+                                if (name != appState.activeProfile) {
+                                    appState.switchProfile(name)
+                                    Toast.makeText(context, "已切换到配置「$name」", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                             label = { Text(name) },
                         )
                     }
@@ -142,7 +148,13 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Switch(checked = !appState.paused, onCheckedChange = { appState.updatePaused(!it) })
+                Switch(
+                    checked = !appState.paused,
+                    onCheckedChange = {
+                        appState.updatePaused(!it)
+                        Toast.makeText(context, if (it) "已暂停改写" else "已恢复改写", Toast.LENGTH_SHORT).show()
+                    },
+                )
             }
         }
 

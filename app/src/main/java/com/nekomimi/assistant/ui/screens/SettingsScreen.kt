@@ -92,7 +92,12 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
                 for (name in appState.profiles) {
                     FilterChip(
                         selected = name == appState.activeProfile,
-                        onClick = { appState.switchProfile(name) },
+                        onClick = {
+                            if (name != appState.activeProfile) {
+                                appState.switchProfile(name)
+                                Toast.makeText(context, "已切换到配置「$name」", Toast.LENGTH_SHORT).show()
+                            }
+                        },
                         label = { Text(name) },
                     )
                 }
