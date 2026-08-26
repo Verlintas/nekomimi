@@ -1,10 +1,10 @@
 # 猫猫助手 (Nekomimi)
 
-基于 Android 无障碍服务的聊天文本改写工具，从零重写的 v2 版本。
+基于 Android 无障碍服务的聊天文本改写工具。灵感来源于 [QQ 猫猫助手（QQMiaoAssistant）](https://github.com/QiCaiJie114514/QQMiaoAssistant) 的开源重新功能实现。
 
 在聊天软件输入框中自动应用文本替换规则、断句追加与随机颜文字，支持任意聊天应用（QQ / 微信 / Telegram / WhatsApp / 钉钉 / Discord / 飞书 / Slack 等）。
 
-> v2 用 Kotlin + Jetpack Compose 从零重写：重点解决原版的无障碍服务掉线问题（前台服务保活 + 自愈闹钟 + 熔断器 + 崩溃日志），并大幅扩展规则引擎（正则 / 随机 / 动态占位符）。
+> 本项目以 Kotlin + Jetpack Compose 重新实现该功能，重点解决原版的无障碍服务掉线问题（前台服务保活 + 自愈闹钟 + 熔断器 + 崩溃日志），并大幅扩展规则引擎（正则 / 随机 / 动态占位符）。
 
 ## 功能
 
