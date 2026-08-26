@@ -99,6 +99,16 @@ Android 平台上，无障碍服务是唯一允许应用读取/写入**其他应
 
 **可审计**：代码完全开源（AGPL-3.0），所有权限与行为均可自行核对；也可以随时用「暂停」开关或直接关闭无障碍服务停止全部处理。
 
+**关键源码（审计入口）**：
+
+| 文件 | 作用 | 看什么 |
+|---|---|---|
+| [AndroidManifest.xml](https://github.com/Verlintas/nekomimi/blob/main/app/src/main/AndroidManifest.xml) | 全部权限声明 | 无 INTERNET 权限，无任何敏感权限 |
+| [NekoAccessibilityService.kt](https://github.com/Verlintas/nekomimi/blob/main/app/src/main/java/com/nekomimi/assistant/service/NekoAccessibilityService.kt) | 无障碍服务核心 | 事件处理、范围过滤、密码框跳过（`isPassword`）、增量跟踪 |
+| [TextProcessor.kt](https://github.com/Verlintas/nekomimi/blob/main/app/src/main/java/com/nekomimi/assistant/engine/TextProcessor.kt) | 改写引擎 | 纯本地字符串处理，不涉及任何数据收集 |
+| [Config.kt](https://github.com/Verlintas/nekomimi/blob/main/app/src/main/java/com/nekomimi/assistant/engine/Config.kt) | 配置模型 | 白名单/黑名单、默认排除清单（输入法/桌面/系统设置） |
+| [LogStore.kt](https://github.com/Verlintas/nekomimi/blob/main/app/src/main/java/com/nekomimi/assistant/log/LogStore.kt) | 运行日志 | 仅写入本机文件，供用户自查 |
+
 **如果你不信任无障碍类应用**：Android 系统设置里可查看「无障碍 → 已下载的服务 → 猫猫助手」，随时可关。
 
 ## 测试
