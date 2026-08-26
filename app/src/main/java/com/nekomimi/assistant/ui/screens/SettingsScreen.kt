@@ -1,5 +1,6 @@
 package com.nekomimi.assistant.ui.screens
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,6 +30,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -39,6 +41,7 @@ import com.nekomimi.assistant.engine.ConfigStore
 import com.nekomimi.assistant.engine.Presets
 import com.nekomimi.assistant.engine.TextProcessor
 import com.nekomimi.assistant.ui.AppState
+import com.nekomimi.assistant.ui.theme.NekoCardColors
 
 /** 常用聊天软件预置包名 */
 private val CHAT_PRESETS = listOf(
@@ -83,8 +86,8 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
     ) {
         Text("设置", style = MaterialTheme.typography.headlineMedium)
 
-        // ===== 多套配置 Profile =====
-        SectionCard("配置方案（Profile）") {
+        // ===== 多套配置 Profile（蓝色卡片背景） =====
+        SectionCard("配置方案（Profile）", containerColor = if (isSystemInDarkTheme()) NekoCardColors.BlueCardDark else NekoCardColors.BlueCardLight) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -366,8 +369,12 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun SectionCard(title: String, content: @Composable () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
+private fun SectionCard(
+    title: String,
+    containerColor: Color = MaterialTheme.colorScheme.surface,
+    content: @Composable () -> Unit,
+) {
+    Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = containerColor)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             content()

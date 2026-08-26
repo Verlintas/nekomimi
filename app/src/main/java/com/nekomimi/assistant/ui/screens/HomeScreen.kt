@@ -1,5 +1,6 @@
 package com.nekomimi.assistant.ui.screens
 
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.nekomimi.assistant.service.AccessibilityUtil
 import com.nekomimi.assistant.service.BatteryGuard
 import com.nekomimi.assistant.ui.AppState
+import com.nekomimi.assistant.ui.theme.NekoCardColors
 
 @Composable
 fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
@@ -102,8 +104,13 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
             }
         }
 
-        // ===== 配置方案快速切换 =====
-        Card(modifier = Modifier.fillMaxWidth()) {
+        // ===== 配置方案快速切换（蓝色卡片背景） =====
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = if (isSystemInDarkTheme()) NekoCardColors.BlueCardDark else NekoCardColors.BlueCardLight,
+            ),
+        ) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     "配置方案：${appState.activeProfile}",
