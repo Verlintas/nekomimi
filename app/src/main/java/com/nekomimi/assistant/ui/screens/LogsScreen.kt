@@ -90,7 +90,7 @@ fun LogsScreen(appState: AppState, modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(8.dp))
         if (entries.isEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = NekoCardColors.PinkCard)) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCard)) {
                 Text(
                     "暂无日志。开启无障碍服务后，改写/掉线/异常都会记录在这里。",
                     modifier = Modifier.padding(16.dp),

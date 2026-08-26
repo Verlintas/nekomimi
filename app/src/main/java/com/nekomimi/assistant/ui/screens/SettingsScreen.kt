@@ -376,7 +376,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
 @Composable
 private fun SectionCard(
     title: String,
-    containerColor: Color = NekoCardColors.PinkCard,
+    containerColor: Color = NekoCardColors.BlueCard,
     content: @Composable () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = containerColor)) {

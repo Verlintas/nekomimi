@@ -68,7 +68,7 @@ fun RulesScreen(appState: AppState, modifier: Modifier = Modifier) {
     ) {
         Text("替换规则", style = MaterialTheme.typography.headlineMedium)
 
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = NekoCardColors.PinkCard)) {
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCard)) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("规则语法", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 Text(
@@ -102,7 +102,7 @@ fun RulesScreen(appState: AppState, modifier: Modifier = Modifier) {
         )
 
         // ===== 实时预览 =====
-        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = NekoCardColors.PinkCard)) {
+        Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCard)) {
             Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("实时预览", style = MaterialTheme.typography.titleSmall, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
                 OutlinedTextField(
