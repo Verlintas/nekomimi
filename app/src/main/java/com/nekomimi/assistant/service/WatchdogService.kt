@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.service
 
 import android.app.NotificationChannel
@@ -96,7 +102,7 @@ class WatchdogService : Service() {
         val enabled = isAccessibilityEnabled()
         val alive = NekoAccessibilityService.isRunning()
         LogStore.i(TAG, "健康检查: 系统已启用=$enabled 服务实例存活=$alive")
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val nm = getSystemService(NOTIFICATION_SERVICE) as? NotificationManager ?: return
         if (enabled) {
             consecutiveDisabled = 0
             nm.cancel(NOTIF_ALERT_ID)
@@ -132,7 +138,7 @@ class WatchdogService : Service() {
     // ==================== 通知构建 ====================
 
     private fun createChannels() {
-        val nm = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+        val nm = getSystemService(NOTIFICATION_SERVICE) as? NotificationManager ?: return
         nm.createNotificationChannel(
             NotificationChannel(CHANNEL_STATUS, "服务状态", NotificationManager.IMPORTANCE_LOW).apply {
                 description = "常驻通知：显示无障碍服务状态与暂停开关"
@@ -254,7 +260,8 @@ object BatteryGuard {
             return true
         }
         return try {
-            val pm = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+            val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager
+                ?: return true
             pm.isIgnoringBatteryOptimizations(context.packageName)
         } catch (t: Throwable) {
             LogStore.e("BatteryGuard", "电池状态查询失败", t)

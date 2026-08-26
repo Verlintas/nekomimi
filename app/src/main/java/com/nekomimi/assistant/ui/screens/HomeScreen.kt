@@ -1,5 +1,17 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.ui.screens
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,7 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,10 +76,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         // ===== 服务状态 =====
         Card(
             modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = if (enabled) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.errorContainer,
-            ),
+            colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -139,7 +148,10 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         }
 
         // ===== 暂停开关 =====
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
+        ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -168,7 +180,7 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
         if (!batteryOk) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.tertiaryContainer),
+                colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -191,6 +203,41 @@ fun HomeScreen(appState: AppState, modifier: Modifier = Modifier) {
                         refreshTick++
                     }) {
                         Text("加入电池白名单")
+                    }
+                }
+            }
+        }
+
+        // ===== 通知权限引导（仅拒绝后显示，不再自动弹窗） =====
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight),
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        "允许通知以获得掉线提醒",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "无障碍服务掉线时需要通知提醒一键恢复。",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                        )
+                    }) {
+                        Text("前往开启")
                     }
                 }
             }

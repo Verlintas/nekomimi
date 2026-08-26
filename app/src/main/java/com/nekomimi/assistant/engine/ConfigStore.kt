@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.engine
 
 import android.content.Context
@@ -18,8 +24,17 @@ object ConfigStore {
     private const val KEY_ACTIVE_PROFILE = "active_profile"
     private const val KEY_PROFILE_PREFIX = "profile:"
     private const val KEY_CONFIG_EPOCH = "config_epoch"
+    private const val KEY_NOTIF_ASKED = "notif_permission_asked"
     const val DEFAULT_PROFILE = "default"
     const val MAX_PROFILE_NAME = 16
+
+    /** 通知权限是否已请求过（避免每次打开应用都弹权限框） */
+    fun hasAskedNotificationPermission(ctx: Context): Boolean =
+        prefs(ctx).getBoolean(KEY_NOTIF_ASKED, false)
+
+    fun markNotificationPermissionAsked(ctx: Context) {
+        prefs(ctx).edit().putBoolean(KEY_NOTIF_ASKED, true).apply()
+    }
 
     /** 配置版本号：任何保存/切换/删除都会递增，服务据此重置增量跟踪状态 */
     fun configEpoch(ctx: Context): Long =

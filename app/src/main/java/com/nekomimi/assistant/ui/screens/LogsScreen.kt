@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.ui.screens
 
 import android.content.ClipData
@@ -34,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nekomimi.assistant.log.LogStore
 import com.nekomimi.assistant.ui.AppState
+import com.nekomimi.assistant.ui.theme.NekoCardColors
 
 @Composable
 fun LogsScreen(appState: AppState, modifier: Modifier = Modifier) {
@@ -55,9 +62,13 @@ fun LogsScreen(appState: AppState, modifier: Modifier = Modifier) {
             Spacer(Modifier.width(8.dp))
             Button(
                 onClick = {
-                    val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                    clip.setPrimaryClip(ClipData.newPlainText("neko_log", entries.joinToString("\n")))
-                    Toast.makeText(context, "已复制 ${entries.size} 条日志", Toast.LENGTH_SHORT).show()
+                    val clip = context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+                    if (clip != null) {
+                        clip.setPrimaryClip(ClipData.newPlainText("neko_log", entries.joinToString("\n")))
+                        Toast.makeText(context, "已复制 ${entries.size} 条日志", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(context, "剪贴板不可用", Toast.LENGTH_SHORT).show()
+                    }
                 },
             ) {
                 Text("复制")
@@ -79,7 +90,7 @@ fun LogsScreen(appState: AppState, modifier: Modifier = Modifier) {
         )
         Spacer(Modifier.height(8.dp))
         if (entries.isEmpty()) {
-            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors()) {
+            Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = NekoCardColors.BlueCardLight)) {
                 Text(
                     "暂无日志。开启无障碍服务后，改写/掉线/异常都会记录在这里。",
                     modifier = Modifier.padding(16.dp),

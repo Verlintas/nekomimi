@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.engine
 
 import kotlinx.serialization.json.Json

@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
@@ -370,7 +376,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
 @Composable
 private fun SectionCard(
     title: String,
-    containerColor: Color = MaterialTheme.colorScheme.surface,
+    containerColor: Color = NekoCardColors.BlueCardLight,
     content: @Composable () -> Unit,
 ) {
     Card(modifier = Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = containerColor)) {

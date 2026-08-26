@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant
 
 import android.Manifest
@@ -33,6 +39,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.nekomimi.assistant.engine.ConfigStore
 import com.nekomimi.assistant.log.CrashHandler
 import com.nekomimi.assistant.log.LogStore
 import com.nekomimi.assistant.service.NekoAccessibilityService
@@ -76,6 +83,7 @@ private fun App() {
     }
 
     // Android 13+ 通知权限（看门狗掉线提醒依赖通知）。
+    // 仅在首次启动自动请求；拒绝后由首页引导手动开启（避免每次打开都弹权限框）。
     // 必须在 LaunchedEffect 中请求：rememberLauncherForActivityResult 的注册
     // 发生在首次组合完成之后，组合期间直接 launch() 会抛
     // "Launcher has not been initialized"（首帧闪退）。
@@ -86,7 +94,8 @@ private fun App() {
         ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
         PackageManager.PERMISSION_GRANTED
     LaunchedEffect(Unit) {
-        if (needsNotifPermission) {
+        if (needsNotifPermission && !ConfigStore.hasAskedNotificationPermission(context)) {
+            ConfigStore.markNotificationPermissionAsked(context)
             notifPermLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
     }

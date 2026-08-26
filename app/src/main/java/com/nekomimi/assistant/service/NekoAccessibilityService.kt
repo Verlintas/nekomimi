@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.service
 
 import android.accessibilityservice.AccessibilityService
@@ -332,6 +338,10 @@ class NekoAccessibilityService : AccessibilityService() {
             val inputPkg = expectedPkg.ifEmpty { currentInputPkg() }
             if (raw.isEmpty()) {
                 noteEmpty(inputPkg, now)
+                return
+            }
+            // 超长文本保护：跳过异常大的输入，防止极端内容拖垮事件线程
+            if (raw.length > MAX_PROCESS_LENGTH) {
                 return
             }
             if (isPlaceholderText(inp, raw) || placeholderHit(raw, inputPkg, now)) {
@@ -788,6 +798,8 @@ class NekoAccessibilityService : AccessibilityService() {
         private const val PLACEHOLDER_MEMORY_MS = 10000L
         private const val MAX_NODES = 20000
         private const val MAX_DEPTH = 60
+        /** 单次处理的最大文本长度（防极端输入拖垮事件线程） */
+        private const val MAX_PROCESS_LENGTH = 2000
         /** 事件无文本时的延迟处理间隔（避免打断 IME 组合） */
         private const val SAFE_DELAY_MS = 300L
 

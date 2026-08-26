@@ -1,3 +1,9 @@
+/*
+ * 猫猫助手 (Nekomimi) — Android accessibility text-rewriting assistant
+ * Copyright (C) 2026 Verlintas
+ * SPDX-License-Identifier: AGPL-3.0-only
+ */
+
 package com.nekomimi.assistant.service
 
 import android.app.AlarmManager
@@ -46,7 +52,8 @@ class AutoHealReceiver : BroadcastReceiver() {
         /** 注册周期自愈闹钟（幂等；系统重启后需重新注册） */
         fun schedule(context: Context) {
             try {
-                val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+                    ?: return
                 val pi = PendingIntent.getBroadcast(
                     context,
                     ALARM_REQUEST_CODE,
