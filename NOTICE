@@ -3,9 +3,14 @@
 本项目的设计与实现参考了以下开源项目，特此声明：
 
 - [Leon-kennedy-god/cat-apk](https://github.com/Leon-kennedy-god/cat-apk)（喵喵助手，AGPL-3.0）
-  - 使用其应用图标资源（mipmap 系列）
 - [QiCaiJie114514/QQMiaoAssistant](https://github.com/QiCaiJie114514/QQMiaoAssistant)（上游）
 
-本项目为从零重写的二次开发，核心代码（规则引擎、无障碍服务、UI）均为独立实现。
+本项目为从零重写的二次开发：核心代码（规则引擎、无障碍服务、UI、稳定性机制）均为独立实现。
+以下内容沿用上游项目数据/资源：
+
+- 内置猫咪颜文字库的基础部分（沿用上游数据，后续已扩展）
+- 默认排除的应用包名清单（输入法/桌面/系统设置）
+
+应用图标为自绘资源（nekomimi.png），非上游资源。
 
 本仓库在收到上游权利人异议后将配合下架或整改。
