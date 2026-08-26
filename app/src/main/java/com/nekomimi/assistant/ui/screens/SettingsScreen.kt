@@ -19,6 +19,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,11 +30,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import com.nekomimi.assistant.engine.Config
 import com.nekomimi.assistant.engine.ConfigStore
 import com.nekomimi.assistant.engine.Presets
+import com.nekomimi.assistant.engine.TextProcessor
 import com.nekomimi.assistant.ui.AppState
 
 /** 常用聊天软件预置包名 */
@@ -52,6 +56,7 @@ private val CHAT_PRESETS = listOf(
 
 @Composable
 fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     val cfg = appState.config
     // keyed by config：切换 Profile 后界面立即跟随新配置（否则保存会用旧值覆盖新 Profile）
     var modeRealtime by remember(cfg) { mutableStateOf(cfg.processingMode == Config.MODE_REALTIME) }
@@ -66,6 +71,8 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
     var excludes by remember(cfg) { mutableStateOf(cfg.excludePackages.joinToString("\n")) }
     var saved by remember { mutableStateOf(false) }
     var showNewProfileDialog by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<String?>(null) }
+    var presetTarget by remember { mutableStateOf<Pair<Presets.StylePack, Boolean>?>(null) }
 
     Column(
         modifier = modifier
@@ -95,10 +102,7 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
                     Text("新建配置")
                 }
                 if (appState.activeProfile != ConfigStore.DEFAULT_PROFILE) {
-                    OutlinedButton(onClick = {
-                        appState.deleteProfile(appState.activeProfile)
-                        saved = true
-                    }) {
+                    OutlinedButton(onClick = { deleteTarget = appState.activeProfile }) {
                         Text("删除当前")
                     }
                 }
@@ -120,6 +124,25 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
                 onDismiss = { showNewProfileDialog = false },
             )
         }
+        deleteTarget?.let { name ->
+            AlertDialog(
+                onDismissRequest = { deleteTarget = null },
+                title = { Text("删除配置「$name」？") },
+                text = { Text("删除后不可恢复。${if (name == appState.activeProfile) "删除后将自动切回 default 配置。" else ""}") },
+                confirmButton = {
+                    Button(onClick = {
+                        appState.deleteProfile(name)
+                        deleteTarget = null
+                        saved = true
+                    }) {
+                        Text("删除")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { deleteTarget = null }) { Text("取消") }
+                },
+            )
+        }
 
         // ===== 预设风格包 =====
         SectionCard("预设风格包（一键应用规则）") {
@@ -137,10 +160,10 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
                         )
                     }
                     Spacer(Modifier.width(8.dp))
-                    TextButton(onClick = { applyPreset(appState, pack, replace = true) }) {
+                    TextButton(onClick = { presetTarget = pack to true }) {
                         Text("覆盖")
                     }
-                    TextButton(onClick = { applyPreset(appState, pack, replace = false) }) {
+                    TextButton(onClick = { presetTarget = pack to false }) {
                         Text("追加")
                     }
                 }
@@ -149,6 +172,26 @@ fun SettingsScreen(appState: AppState, modifier: Modifier = Modifier) {
                 "「覆盖」替换现有规则；「追加」合并到现有规则末尾。应用后可在「规则」页查看修改。",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        presetTarget?.let { (pack, replace) ->
+            PresetDialog(
+                pack = pack,
+                replace = replace,
+                appendEnabled = appState.config.enableAppend,
+                emoticonEnabled = appState.config.enableRandomEmoticon,
+                onApply = { cleanMode ->
+                    applyPreset(appState, pack, replace, cleanMode)
+                    saved = true
+                    Toast.makeText(
+                        context,
+                        "已应用「${pack.name}」(${Presets.validRuleCount(pack.rulesText)} 条规则)" +
+                            if (cleanMode) "，已关闭追加与颜文字" else "",
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                    presetTarget = null
+                },
+                onDismiss = { presetTarget = null },
             )
         }
 
@@ -349,14 +392,83 @@ private fun SwitchRow(title: String, desc: String, checked: Boolean, onChecked: 
 private fun splitLines(s: String): List<String> =
     s.lines().map { it.trim() }.filter { it.isNotEmpty() }
 
-/** 应用预设：覆盖或追加到当前配置的规则 */
-private fun applyPreset(appState: AppState, pack: Presets.StylePack, replace: Boolean) {
+/** 应用预设：覆盖或追加到当前配置的规则；cleanMode 同时关闭断句追加与颜文字（纯净效果） */
+private fun applyPreset(appState: AppState, pack: Presets.StylePack, replace: Boolean, cleanMode: Boolean) {
     val rules = if (replace) {
         Presets.asReplaceRules(pack.rulesText)
     } else {
         Presets.asAppendRules(appState.config.rules, pack.rulesText)
     }
-    appState.save(appState.config.copy(rules = rules))
+    var newConfig = appState.config.copy(rules = rules)
+    if (cleanMode) {
+        newConfig = newConfig.copy(enableAppend = false, enableRandomEmoticon = false)
+    }
+    appState.save(newConfig)
+}
+
+@Composable
+private fun PresetDialog(
+    pack: Presets.StylePack,
+    replace: Boolean,
+    appendEnabled: Boolean,
+    emoticonEnabled: Boolean,
+    onApply: (cleanMode: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(if (replace) "覆盖为「${pack.name}」" else "追加「${pack.name}」") },
+        text = {
+            Column {
+                // 效果预览：让用户应用前就能看到预设效果
+                val previewCfg = remember(pack) {
+                    Config(
+                        rules = Presets.asReplaceRules(pack.rulesText),
+                        enableAppend = false,
+                        enableRandomEmoticon = false,
+                    )
+                }
+                val preview = remember(pack) {
+                    TextProcessor.process("我想找你聊天，明天见", previewCfg) ?: ""
+                }
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        "效果预览：\n$preview",
+                        modifier = Modifier.padding(10.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "${Presets.validRuleCount(pack.rulesText)} 条规则将${if (replace) "替换" else "合并到"}现有规则。",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    "当前「断句追加」${if (appendEnabled) "已开启" else "关闭"}，「句末颜文字」${if (emoticonEnabled) "已开启" else "关闭"}，" +
+                        "会叠加到规则效果上（例：「我」→「本喵」后再追加「喵」）。",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            Column(horizontalAlignment = Alignment.End) {
+                Button(onClick = { onApply(true) }) {
+                    Text("应用并关闭追加/颜文字")
+                }
+                Spacer(Modifier.height(4.dp))
+                TextButton(onClick = { onApply(false) }) { Text("仅应用规则") }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消") }
+        },
+    )
 }
 
 @Composable
